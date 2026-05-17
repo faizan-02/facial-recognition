@@ -190,6 +190,7 @@ footer { text-align: center; padding: 2rem; color: var(--text-dim); font-size: 0
     backdrop-filter: blur(4px); display: flex; flex-direction: column;
     align-items: center; justify-content: center; z-index: 1000;
 }
+.overlay[hidden] { display: none !important; }
 .spinner {
     width: 48px; height: 48px; border: 4px solid var(--border);
     border-top-color: var(--accent); border-radius: 50%;
@@ -204,3 +205,4 @@ footer { text-align: center; padding: 2rem; color: var(--text-dim); font-size: 0
     .tabs { flex-wrap: nowrap; }
     .tab { font-size: 0.75rem; padding: 0.6rem 0.5rem; }
 }
+
