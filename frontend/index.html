@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HydraBytes Face Recognition</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <div class="logo-icon">H</div>
+            <div>
+                <h1>HydraBytes FRS</h1>
+                <p class="tagline">CPU-Optimized Face Recognition System</p>
+            </div>
+        </div>
+        <div id="status" class="status-badge">Connecting...</div>
+    </header>
+
+    <main>
+        <nav class="tabs">
+            <button class="tab active" data-tab="register">Register Face</button>
+            <button class="tab" data-tab="recognize-image">Recognize Image</button>
+            <button class="tab" data-tab="recognize-video">Recognize Video</button>
+            <button class="tab" data-tab="database">Face Database</button>
+        </nav>
+
+        <!-- Register Face -->
+        <section id="tab-register" class="tab-content active">
+            <div class="card">
+                <h2>Register a New Face</h2>
+                <p>Upload a clear photo with a visible face. Multiple photos per person improve accuracy.</p>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="reg-name">Person's Name</label>
+                        <input type="text" id="reg-name" placeholder="e.g. John Doe" required>
+                    </div>
+                    <div class="upload-area" id="reg-upload">
+                        <input type="file" id="reg-file" accept="image/*" hidden>
+                        <div class="upload-placeholder">
+                            <span class="upload-icon">+</span>
+                            <span>Click or drag to upload a photo</span>
+                        </div>
+                        <img id="reg-preview" class="preview-img" hidden>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="reg-submit">Register Face</button>
+                </form>
+                <div id="reg-result" class="result-box" hidden></div>
+            </div>
+        </section>
+
+        <!-- Recognize Image -->
+        <section id="tab-recognize-image" class="tab-content">
+            <div class="card">
+                <h2>Recognize Faces in Image</h2>
+                <p>Upload any image to detect and identify faces.</p>
+                <div class="upload-area" id="img-upload">
+                    <input type="file" id="img-file" accept="image/*" hidden>
+                    <div class="upload-placeholder">
+                        <span class="upload-icon">+</span>
+                        <span>Click or drag to upload an image</span>
+                    </div>
+                    <img id="img-preview" class="preview-img" hidden>
+                </div>
+                <button class="btn btn-primary" id="img-submit" disabled>Recognize Faces</button>
+                <div id="img-result" class="result-box" hidden></div>
+                <div id="img-annotated-container" hidden>
+                    <h3>Annotated Result</h3>
+                    <img id="img-annotated" class="result-img">
+                </div>
+            </div>
+        </section>
+
+        <!-- Recognize Video -->
+        <section id="tab-recognize-video" class="tab-content">
+            <div class="card">
+                <h2>Recognize Faces in Video</h2>
+                <p>Upload a video file. Processing runs on CPU — larger videos take longer.</p>
+                <div class="upload-area" id="vid-upload">
+                    <input type="file" id="vid-file" accept="video/*" hidden>
+                    <div class="upload-placeholder">
+                        <span class="upload-icon">+</span>
+                        <span>Click or drag to upload a video</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="frame-skip">Frame Skip (higher = faster, lower = more accurate)</label>
+                    <input type="range" id="frame-skip" min="0" max="10" value="2">
+                    <span id="frame-skip-val">Process every 3rd frame</span>
+                </div>
+                <button class="btn btn-primary" id="vid-submit" disabled>Process Video</button>
+                <div id="vid-progress" class="progress-bar" hidden>
+                    <div class="progress-fill"></div>
+                    <span class="progress-text">Processing...</span>
+                </div>
+                <div id="vid-result" class="result-box" hidden></div>
+                <div id="vid-output-container" hidden>
+                    <h3>Processed Video</h3>
+                    <video id="vid-output" controls class="result-video"></video>
+                </div>
+            </div>
+        </section>
+
+        <!-- Face Database -->
+        <section id="tab-database" class="tab-content">
+            <div class="card">
+                <h2>Registered Faces</h2>
+                <p>All registered identities in the system.</p>
+                <div id="faces-list" class="faces-grid"></div>
+                <div id="no-faces" class="empty-state" hidden>
+                    <p>No faces registered yet. Go to "Register Face" to add some.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Powered by <strong>HydraBytes</strong> &mdash; InsightFace (SCRFD + ArcFace) &bull; ONNX Runtime CPU &bull; FastAPI</p>
+    </footer>
+
+    <div id="loading-overlay" class="overlay" hidden>
+        <div class="spinner"></div>
+        <p id="loading-text">Processing...</p>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

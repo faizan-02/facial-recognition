@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+data/uploads/*
+data/embeddings.pkl
+data/known_faces/*
+!data/uploads/.gitkeep
+!data/known_faces/.gitkeep
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.DS_Store
+Thumbs.db
