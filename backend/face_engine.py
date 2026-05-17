@@ -321,15 +321,21 @@ class FaceEngine:
 
     def _face_to_dict(self, face) -> dict:
         bbox = face.bbox.astype(int).tolist()
+        
+        age = getattr(face, "age", None)
+        gender = getattr(face, "gender", None)
+        
         result = {
             "bbox": bbox,
             "confidence": float(face.det_score),
-            "age": int(face.age) if face.age is not None else None,
-            "gender": "M" if face.gender == 1 else "F" if face.gender is not None else None,
+            "age": int(age) if age is not None else None,
+            "gender": "M" if gender == 1 else "F" if gender is not None else None,
             "pose_label": self._estimate_pose(face),
         }
-        if face.embedding is not None:
-            result["_embedding"] = face.embedding
+        
+        embedding = getattr(face, "embedding", None)
+        if embedding is not None:
+            result["_embedding"] = embedding
         return result
 
     def register_face(self, name: str, image: np.ndarray) -> dict:
