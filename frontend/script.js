@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("frame-skip").addEventListener("input", (e) => {
         const v = parseInt(e.target.value);
         document.getElementById("frame-skip-val").textContent =
-            v === 0 ? "Process every frame" : `Process every ${v + 1}${ordinal(v + 1)} frame`;
+            v === 0 ? "Process every frame (slowest, most accurate)" : `Process every ${v + 1}${ordinal(v + 1)} frame`;
     });
 });
 
@@ -26,7 +26,7 @@ async function checkHealth() {
     try {
         const res = await fetch(`${API}/health`);
         const data = await res.json();
-        badge.textContent = `Online | ${data.registered_faces} faces`;
+        badge.textContent = `Online | ${data.registered_identities} identities, ${data.total_samples} samples`;
         badge.className = "status-badge online";
     } catch {
         badge.textContent = "Offline";
@@ -72,44 +72,95 @@ function handleFileSelect(input, previewId, onFile) {
         if (preview && file.type.startsWith("image/")) {
             preview.src = URL.createObjectURL(file);
             preview.hidden = false;
-            preview.previousElementSibling.hidden = true;
+            const placeholder = preview.previousElementSibling;
+            if (placeholder) placeholder.hidden = true;
         }
     }
     if (onFile) onFile(file);
 }
 
 function setupRegister() {
-    setupUploadArea("reg-upload", "reg-file", "reg-preview", null);
+    const area = document.getElementById("reg-upload");
+    const input = document.getElementById("reg-file");
+    const previewGrid = document.getElementById("reg-previews");
+
+    area.addEventListener("click", () => input.click());
+    area.addEventListener("dragover", (e) => { e.preventDefault(); area.classList.add("dragover"); });
+    area.addEventListener("dragleave", () => area.classList.remove("dragover"));
+    area.addEventListener("drop", (e) => {
+        e.preventDefault();
+        area.classList.remove("dragover");
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            showRegPreviews();
+        }
+    });
+    input.addEventListener("change", showRegPreviews);
+
+    function showRegPreviews() {
+        previewGrid.innerHTML = "";
+        for (const file of input.files) {
+            if (!file.type.startsWith("image/")) continue;
+            const div = document.createElement("div");
+            div.className = "preview-thumb";
+            const img = document.createElement("img");
+            img.src = URL.createObjectURL(file);
+            const label = document.createElement("span");
+            label.textContent = file.name.substring(0, 20);
+            div.appendChild(img);
+            div.appendChild(label);
+            previewGrid.appendChild(div);
+        }
+    }
 
     document.getElementById("register-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const name = document.getElementById("reg-name").value.trim();
-        const file = document.getElementById("reg-file").files[0];
-        if (!name || !file) return;
+        const files = input.files;
+        if (!name || !files.length) return;
 
-        showLoading("Registering face...");
-        const form = new FormData();
-        form.append("name", name);
-        form.append("file", file);
+        showLoading(`Registering ${files.length} image(s)...`);
+        const box = document.getElementById("reg-result");
 
         try {
-            const res = await fetch(`${API}/api/register`, { method: "POST", body: form });
-            const data = await res.json();
-            const box = document.getElementById("reg-result");
-            box.hidden = false;
-
-            if (res.ok) {
-                box.className = "result-box success";
-                box.innerHTML = `<strong>Success!</strong> ${data.message}`;
-                document.getElementById("reg-name").value = "";
-                document.getElementById("reg-file").value = "";
-                document.getElementById("reg-preview").hidden = true;
-                document.querySelector("#reg-upload .upload-placeholder").hidden = false;
-                checkHealth();
+            if (files.length === 1) {
+                const form = new FormData();
+                form.append("name", name);
+                form.append("file", files[0]);
+                const res = await fetch(`${API}/api/register`, { method: "POST", body: form });
+                const data = await res.json();
+                box.hidden = false;
+                if (res.ok) {
+                    box.className = "result-box success";
+                    box.innerHTML = `<strong>Success!</strong> ${data.message}<br>Poses registered: ${(data.poses_registered || []).join(", ")}`;
+                } else {
+                    box.className = "result-box error";
+                    box.innerHTML = `<strong>Error:</strong> ${data.detail || data.message}`;
+                }
             } else {
-                box.className = "result-box error";
-                box.innerHTML = `<strong>Error:</strong> ${data.detail || data.message}`;
+                const form = new FormData();
+                form.append("name", name);
+                for (const file of files) form.append("files", file);
+                const res = await fetch(`${API}/api/register/multi`, { method: "POST", body: form });
+                const data = await res.json();
+                box.hidden = false;
+                if (res.ok) {
+                    box.className = "result-box success";
+                    let html = `<strong>${data.registered}/${data.total} images registered.</strong><br>`;
+                    data.results.forEach((r, i) => {
+                        const icon = r.success ? "&#10003;" : "&#10007;";
+                        html += `${icon} Image ${i + 1}: ${r.message}<br>`;
+                    });
+                    box.innerHTML = html;
+                } else {
+                    box.className = "result-box error";
+                    box.innerHTML = `<strong>Error:</strong> ${data.detail}`;
+                }
             }
+            document.getElementById("reg-name").value = "";
+            input.value = "";
+            previewGrid.innerHTML = "";
+            checkHealth();
         } catch (err) {
             showError("reg-result", err.message);
         }
@@ -126,7 +177,7 @@ function setupImageRecognition() {
 
     document.getElementById("img-submit").addEventListener("click", async () => {
         if (!selectedFile) return;
-        showLoading("Detecting and recognizing faces...");
+        showLoading("Running multi-scale detection & recognition...");
 
         const form = new FormData();
         form.append("file", selectedFile);
@@ -141,10 +192,13 @@ function setupImageRecognition() {
                 box.className = "result-box info";
                 let html = `<strong>${data.total_faces} face(s) detected</strong><br>`;
                 data.faces.forEach((f, i) => {
-                    const id = f.identity ? `<span style="color:var(--green)">${f.identity}</span> (${(f.similarity * 100).toFixed(0)}%)` : `<span style="color:var(--orange)">Unknown</span>`;
+                    const id = f.identity
+                        ? `<span style="color:var(--green)">${f.identity}</span> (${(f.similarity * 100).toFixed(0)}%)`
+                        : `<span style="color:var(--orange)">Unknown</span>`;
                     html += `Face ${i + 1}: ${id} | Conf: ${(f.confidence * 100).toFixed(0)}%`;
                     if (f.age) html += ` | Age: ~${f.age}`;
                     if (f.gender) html += ` | ${f.gender}`;
+                    if (f.pose && f.pose !== "frontal") html += ` | ${f.pose}`;
                     html += `<br>`;
                 });
                 box.innerHTML = html;
@@ -191,7 +245,9 @@ function setupVideoRecognition() {
         if (!selectedFile) return;
         const progress = document.getElementById("vid-progress");
         progress.hidden = false;
-        showLoading("Processing video — this may take a while on CPU...");
+        document.getElementById("vid-submit").disabled = true;
+        document.getElementById("vid-result").hidden = true;
+        document.getElementById("vid-output-container").hidden = true;
 
         const form = new FormData();
         form.append("file", selectedFile);
@@ -200,30 +256,61 @@ function setupVideoRecognition() {
         try {
             const res = await fetch(`${API}/api/recognize/video`, { method: "POST", body: form });
             const data = await res.json();
-            progress.hidden = true;
-            const box = document.getElementById("vid-result");
-            box.hidden = false;
 
-            if (res.ok) {
+            if (data.job_id) {
+                pollVideoJob(data.job_id);
+            } else {
+                progress.hidden = true;
+                showError("vid-result", data.detail || "Failed to start processing");
+            }
+        } catch (err) {
+            progress.hidden = true;
+            showError("vid-result", err.message);
+            document.getElementById("vid-submit").disabled = false;
+        }
+    });
+}
+
+async function pollVideoJob(jobId) {
+    const progressFill = document.getElementById("vid-progress-fill");
+    const progressText = document.getElementById("vid-progress-text");
+
+    const poll = async () => {
+        try {
+            const res = await fetch(`${API}/api/recognize/video/${jobId}`);
+            const data = await res.json();
+
+            if (data.status === "processing") {
+                progressFill.style.width = `${data.progress}%`;
+                progressFill.style.animation = "none";
+                progressText.textContent = `Processing... ${data.progress.toFixed(1)}%`;
+                setTimeout(poll, 1500);
+            } else if (data.status === "done") {
+                document.getElementById("vid-progress").hidden = true;
+                document.getElementById("vid-submit").disabled = false;
+                const box = document.getElementById("vid-result");
+                box.hidden = false;
                 box.className = "result-box info";
+                const r = data.result;
                 box.innerHTML = `
                     <strong>Video processed!</strong><br>
-                    Frames: ${data.total_frames} total, ${data.processed_frames} analyzed<br>
-                    Avg faces/frame: ${data.avg_faces_per_frame}
+                    Frames: ${r.total_frames} total, ${r.processed_frames} analyzed<br>
+                    Avg faces/frame: ${r.avg_faces_per_frame}<br>
+                    Identified: ${r.unique_identities.length ? r.unique_identities.join(", ") : "none (register faces first)"}
                 `;
                 const container = document.getElementById("vid-output-container");
                 container.hidden = false;
                 document.getElementById("vid-output").src = `${API}${data.annotated_video}`;
             } else {
-                box.className = "result-box error";
-                box.innerHTML = `<strong>Error:</strong> ${data.detail}`;
+                document.getElementById("vid-progress").hidden = true;
+                document.getElementById("vid-submit").disabled = false;
+                showError("vid-result", data.error || "Processing failed");
             }
         } catch (err) {
-            progress.hidden = true;
-            showError("vid-result", err.message);
+            setTimeout(poll, 3000);
         }
-        hideLoading();
-    });
+    };
+    poll();
 }
 
 async function loadFaces() {
@@ -240,14 +327,25 @@ async function loadFaces() {
         }
 
         empty.hidden = true;
-        grid.innerHTML = faces.map((f) => `
-            <div class="face-card">
-                <div class="avatar">${f.name.charAt(0).toUpperCase()}</div>
-                <div class="name">${f.name}</div>
-                <div class="samples">${f.samples} sample(s)</div>
-                <button class="btn btn-danger" onclick="deleteFace('${f.name}')">Remove</button>
-            </div>
-        `).join("");
+        grid.innerHTML = faces.map((f) => {
+            const coverageColor = {
+                excellent: "var(--green)",
+                good: "#6cb4ee",
+                fair: "var(--orange)",
+                poor: "var(--red)",
+            }[f.coverage] || "var(--text-dim)";
+
+            return `
+                <div class="face-card">
+                    <div class="avatar">${f.name.charAt(0).toUpperCase()}</div>
+                    <div class="name">${f.name}</div>
+                    <div class="samples">${f.samples} sample(s)</div>
+                    <div class="poses">Poses: ${f.poses.join(", ") || "none"}</div>
+                    <div class="coverage" style="color:${coverageColor}">Coverage: ${f.coverage}</div>
+                    <button class="btn btn-danger" onclick="deleteFace('${f.name}')">Remove</button>
+                </div>
+            `;
+        }).join("");
     } catch {}
 }
 

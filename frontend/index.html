@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HydraBytes Face Recognition</title>
+    <title>HydraBytes Face Recognition System</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
             <div class="logo-icon">H</div>
             <div>
                 <h1>HydraBytes FRS</h1>
-                <p class="tagline">CPU-Optimized Face Recognition System</p>
+                <p class="tagline">CPU-Optimized | Small Faces | Any Angle | Public-Place Video</p>
             </div>
         </div>
         <div id="status" class="status-badge">Connecting...</div>
@@ -30,21 +30,23 @@
         <section id="tab-register" class="tab-content active">
             <div class="card">
                 <h2>Register a New Face</h2>
-                <p>Upload a clear photo with a visible face. Multiple photos per person improve accuracy.</p>
+                <div class="info-box">
+                    <strong>For best any-angle recognition:</strong> register 3 photos per person — frontal, left profile, and right profile. The system detects which angle you're uploading.
+                </div>
                 <form id="register-form">
                     <div class="form-group">
                         <label for="reg-name">Person's Name</label>
                         <input type="text" id="reg-name" placeholder="e.g. John Doe" required>
                     </div>
                     <div class="upload-area" id="reg-upload">
-                        <input type="file" id="reg-file" accept="image/*" hidden>
+                        <input type="file" id="reg-file" accept="image/*" multiple hidden>
                         <div class="upload-placeholder">
                             <span class="upload-icon">+</span>
-                            <span>Click or drag to upload a photo</span>
+                            <span>Click or drag photos (multiple allowed)</span>
                         </div>
-                        <img id="reg-preview" class="preview-img" hidden>
                     </div>
-                    <button type="submit" class="btn btn-primary" id="reg-submit">Register Face</button>
+                    <div id="reg-previews" class="preview-grid"></div>
+                    <button type="submit" class="btn btn-primary" id="reg-submit">Register Face(s)</button>
                 </form>
                 <div id="reg-result" class="result-box" hidden></div>
             </div>
@@ -54,7 +56,7 @@
         <section id="tab-recognize-image" class="tab-content">
             <div class="card">
                 <h2>Recognize Faces in Image</h2>
-                <p>Upload any image to detect and identify faces.</p>
+                <p>Upload any image — handles small faces, blur, and all angles via multi-scale detection.</p>
                 <div class="upload-area" id="img-upload">
                     <input type="file" id="img-file" accept="image/*" hidden>
                     <div class="upload-placeholder">
@@ -76,7 +78,7 @@
         <section id="tab-recognize-video" class="tab-content">
             <div class="card">
                 <h2>Recognize Faces in Video</h2>
-                <p>Upload a video file. Processing runs on CPU — larger videos take longer.</p>
+                <p>Upload public-place / CCTV video. Includes face tracking to maintain identity across frames.</p>
                 <div class="upload-area" id="vid-upload">
                     <input type="file" id="vid-file" accept="video/*" hidden>
                     <div class="upload-placeholder">
@@ -91,8 +93,8 @@
                 </div>
                 <button class="btn btn-primary" id="vid-submit" disabled>Process Video</button>
                 <div id="vid-progress" class="progress-bar" hidden>
-                    <div class="progress-fill"></div>
-                    <span class="progress-text">Processing...</span>
+                    <div class="progress-fill" id="vid-progress-fill"></div>
+                    <span class="progress-text" id="vid-progress-text">Starting...</span>
                 </div>
                 <div id="vid-result" class="result-box" hidden></div>
                 <div id="vid-output-container" hidden>
@@ -106,7 +108,7 @@
         <section id="tab-database" class="tab-content">
             <div class="card">
                 <h2>Registered Faces</h2>
-                <p>All registered identities in the system.</p>
+                <p>All registered identities. Coverage shows how well multi-angle enrollment is.</p>
                 <div id="faces-list" class="faces-grid"></div>
                 <div id="no-faces" class="empty-state" hidden>
                     <p>No faces registered yet. Go to "Register Face" to add some.</p>
@@ -116,7 +118,7 @@
     </main>
 
     <footer>
-        <p>Powered by <strong>HydraBytes</strong> &mdash; InsightFace (SCRFD + ArcFace) &bull; ONNX Runtime CPU &bull; FastAPI</p>
+        <p>Powered by <strong>HydraBytes</strong> &mdash; SCRFD + ArcFace | Multi-Scale Detection | Face Tracking | ONNX Runtime CPU</p>
     </footer>
 
     <div id="loading-overlay" class="overlay" hidden>
