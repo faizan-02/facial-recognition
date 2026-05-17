@@ -1,5 +1,12 @@
 const API = window.location.origin;
 
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
     checkHealth();
     setupTabs();
@@ -272,6 +279,8 @@ function setupVideoRecognition() {
 }
 
 async function pollVideoJob(jobId) {
+    let retries = 0;
+    const MAX_RETRIES = 60;
     const progressFill = document.getElementById("vid-progress-fill");
     const progressText = document.getElementById("vid-progress-text");
 
@@ -307,7 +316,9 @@ async function pollVideoJob(jobId) {
                 showError("vid-result", data.error || "Processing failed");
             }
         } catch (err) {
-            setTimeout(poll, 3000);
+            retries++;
+            if (retries < MAX_RETRIES) { setTimeout(poll, 3000); }
+            else { document.getElementById('vid-progress').hidden = true; document.getElementById('vid-submit').disabled = false; showError('vid-result', 'Lost connection to server'); }
         }
     };
     poll();
@@ -337,12 +348,12 @@ async function loadFaces() {
 
             return `
                 <div class="face-card">
-                    <div class="avatar">${f.name.charAt(0).toUpperCase()}</div>
-                    <div class="name">${f.name}</div>
+                    <div class="avatar">${escapeHtml(f.name).charAt(0).toUpperCase()}</div>
+                    <div class="name">${escapeHtml(f.name)}</div>
                     <div class="samples">${f.samples} sample(s)</div>
                     <div class="poses">Poses: ${f.poses.join(", ") || "none"}</div>
                     <div class="coverage" style="color:${coverageColor}">Coverage: ${f.coverage}</div>
-                    <button class="btn btn-danger" onclick="deleteFace('${f.name}')">Remove</button>
+                    <button class="btn btn-danger" onclick="deleteFace(this.dataset.name)" data-name="${f.name}">Remove</button>
                 </div>
             `;
         }).join("");

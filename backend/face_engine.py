@@ -9,11 +9,9 @@ import onnxruntime as ort
 ort.set_default_logger_severity(3)
 
 NUM_THREADS = max(1, os.cpu_count() or 4)
-SESSION_OPTIONS = ort.SessionOptions()
-SESSION_OPTIONS.intra_op_num_threads = NUM_THREADS
-SESSION_OPTIONS.inter_op_num_threads = max(1, NUM_THREADS // 2)
-SESSION_OPTIONS.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-SESSION_OPTIONS.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+os.environ["OMP_NUM_THREADS"] = str(NUM_THREADS)
+os.environ["OPENBLAS_NUM_THREADS"] = str(NUM_THREADS)
+os.environ["MKL_NUM_THREADS"] = str(NUM_THREADS)
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 KNOWN_FACES_DIR = DATA_DIR / "known_faces"
@@ -105,7 +103,7 @@ class FaceTracker:
         if not self.tracks:
             for face in faces:
                 face["track_id"] = self.next_id
-                self.tracks[self.next_id] = face
+                self.tracks[self.next_id] = face.copy()
                 self.disappeared[self.next_id] = 0
                 self.next_id += 1
             return faces
@@ -145,7 +143,7 @@ class FaceTracker:
                 faces[j]["identity"] = self.tracks[tid]["identity"]
                 faces[j]["similarity"] = self.tracks[tid]["similarity"]
 
-            self.tracks[tid] = faces[j]
+            self.tracks[tid] = faces[j].copy()
             self.disappeared[tid] = 0
             matched_tracks.add(i)
             matched_dets.add(j)
@@ -155,7 +153,7 @@ class FaceTracker:
         for j, face in enumerate(faces):
             if j not in matched_dets:
                 face["track_id"] = self.next_id
-                self.tracks[self.next_id] = face
+                self.tracks[self.next_id] = face.copy()
                 self.disappeared[self.next_id] = 0
                 self.next_id += 1
 
@@ -330,7 +328,7 @@ class FaceEngine:
             "pose_label": self._estimate_pose(face),
         }
         if face.embedding is not None:
-            result["embedding"] = face.embedding
+            result["_embedding"] = face.embedding
         return result
 
     def register_face(self, name: str, image: np.ndarray) -> dict:
@@ -415,7 +413,7 @@ class FaceEngine:
         faces = self.detect_faces_multiscale(image)
         results = []
         for face in faces:
-            embedding = face.get("embedding")
+            embedding = face.pop("_embedding", None)
             identity = None
             similarity = 0.0
             if embedding is not None and self.known_embeddings:
@@ -468,7 +466,7 @@ class FaceEngine:
                 face_dicts = []
                 for face in raw_faces:
                     d = self._face_to_dict(face)
-                    embedding = d.get("embedding")
+                    embedding = d.pop("_embedding", None)
                     if embedding is not None and self.known_embeddings:
                         identity, similarity = self.identify_face(embedding, d.get("pose_label", "frontal"))
                         d["identity"] = identity
