@@ -18,7 +18,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("frame-skip").addEventListener("input", (e) => {
         const v = parseInt(e.target.value);
         document.getElementById("frame-skip-val").textContent =
-            v === 0 ? "Process every frame (slowest, most accurate)" : `Process every ${v + 1}${ordinal(v + 1)} frame`;
+            v < 0
+                ? "Auto (recommended)"
+                : v === 0
+                    ? "Process every frame (slowest, most accurate)"
+                    : `Process every ${v + 1}${ordinal(v + 1)} frame`;
     });
 });
 

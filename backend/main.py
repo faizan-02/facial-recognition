@@ -145,7 +145,7 @@ def _process_video_sync(job_id: str, in_path: str, out_path: str, frame_skip: in
 @app.post("/api/recognize/video")
 async def recognize_video(
     file: UploadFile = File(...),
-    frame_skip: int = Form(2),
+    frame_skip: int = Form(-1),
 ):
     suffix = Path(file.filename).suffix or ".mp4"
     job_id = uuid.uuid4().hex[:12]

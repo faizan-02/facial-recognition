@@ -434,7 +434,7 @@ class FaceEngine:
         self,
         video_path: str,
         output_path: str,
-        frame_skip: int = 2,
+        frame_skip: int = -1,
         progress_callback=None,
     ) -> dict:
         cap = cv2.VideoCapture(video_path)
@@ -446,6 +446,9 @@ class FaceEngine:
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+        if frame_skip < 0:
+            frame_skip = max(2, int(fps / 2) - 1)
+
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
@@ -455,15 +458,24 @@ class FaceEngine:
         total_faces = 0
         last_results = []
         unique_identities = set()
+        prev_gray = None
 
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
 
-            if frame_idx % (frame_skip + 1) == 0:
-                enhanced = enhance_image(frame)
-                raw_faces = self.app_lowres.get(enhanced)
+            should_process = frame_idx % (frame_skip + 1) == 0
+            if should_process and prev_gray is not None:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                diff = cv2.absdiff(prev_gray, gray).mean()
+                if diff < 3.0:
+                    should_process = False
+
+            if should_process:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                prev_gray = gray
+                raw_faces = self.app_lowres.get(frame)
                 face_dicts = []
                 for face in raw_faces:
                     d = self._face_to_dict(face)

@@ -88,8 +88,8 @@
                 </div>
                 <div class="form-group">
                     <label for="frame-skip">Frame Skip (higher = faster, lower = more accurate)</label>
-                    <input type="range" id="frame-skip" min="0" max="10" value="2">
-                    <span id="frame-skip-val">Process every 3rd frame</span>
+                    <input type="range" id="frame-skip" min="-1" max="10" value="-1">
+                    <span id="frame-skip-val">Auto (recommended)</span>
                 </div>
                 <button class="btn btn-primary" id="vid-submit" disabled>Process Video</button>
                 <div id="vid-progress" class="progress-bar" hidden>
