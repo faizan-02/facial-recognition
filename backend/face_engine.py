@@ -1,5 +1,6 @@
 import os
 import pickle
+import subprocess
 import numpy as np
 import cv2
 from pathlib import Path
@@ -497,6 +498,22 @@ class FaceEngine:
 
         cap.release()
         out.release()
+
+        browser_path = output_path.replace(".mp4", "_h264.mp4")
+        try:
+            subprocess.run([
+                "ffmpeg", "-y", "-i", output_path,
+                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                "-movflags", "+faststart", "-an",
+                browser_path,
+            ], capture_output=True, timeout=300)
+            if os.path.exists(browser_path) and os.path.getsize(browser_path) > 0:
+                os.replace(browser_path, output_path)
+            else:
+                if os.path.exists(browser_path):
+                    os.remove(browser_path)
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
 
         return {
             "success": True,
