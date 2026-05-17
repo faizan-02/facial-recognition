@@ -184,7 +184,7 @@ class FaceEngine:
         self.app_lowres = FaceAnalysis(
             name="buffalo_l",
             providers=["CPUExecutionProvider"],
-            allowed_modules=["detection", "recognition", "genderage"],
+            allowed_modules=["detection", "recognition"],
         )
         self.app_lowres.prepare(
             ctx_id=-1,
@@ -446,11 +446,18 @@ class FaceEngine:
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+        target_width = width
+        target_height = height
+        if target_width > 1280:
+            scale = 1280 / target_width
+            target_width = 1280
+            target_height = int(height * scale)
+
         if frame_skip < 0:
             frame_skip = max(2, int(fps / 2) - 1)
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        out = cv2.VideoWriter(output_path, fourcc, fps, (target_width, target_height))
 
         tracker = FaceTracker(max_disappeared=int(fps * 0.5))
         frame_idx = 0
@@ -464,6 +471,9 @@ class FaceEngine:
             ret, frame = cap.read()
             if not ret:
                 break
+
+            if target_width != width:
+                frame = cv2.resize(frame, (target_width, target_height))
 
             should_process = frame_idx % (frame_skip + 1) == 0
             if should_process and prev_gray is not None:
@@ -515,10 +525,10 @@ class FaceEngine:
         try:
             subprocess.run([
                 "ffmpeg", "-y", "-i", output_path,
-                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                "-c:v", "libx264", "-preset", "ultrafast", "-crf", "28",
                 "-movflags", "+faststart", "-an",
                 browser_path,
-            ], capture_output=True, timeout=300)
+            ], capture_output=True, timeout=600)
             if os.path.exists(browser_path) and os.path.getsize(browser_path) > 0:
                 os.replace(browser_path, output_path)
             else:
